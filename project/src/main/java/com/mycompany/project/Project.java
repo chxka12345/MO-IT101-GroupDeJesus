@@ -1,382 +1,701 @@
 package com.mycompany.project;
 
 import javax.swing.*;
-import javax.swing.border.*;
-import javax.swing.table.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.*;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
+import java.io.*;
 
+/**
+ * MotorPH Employee Management System
+ * Enhanced version with comprehensive View and Create Record functionalities
+ * Features: Employee Management, Department Management, Attendance Tracking, 
+ * Payslip Generation, Leave Request Management with data persistence
+ */
 public class Project extends JFrame {
-    // Modern Color Scheme (matching web app)
-    private static final Color PRIMARY_COLOR = new Color(79, 70, 229);      // Indigo
-    private static final Color PRIMARY_HOVER = new Color(67, 56, 202);      // Darker Indigo
-    private static final Color SECONDARY_COLOR = new Color(249, 250, 251);  // Light Gray
-    private static final Color ACCENT_COLOR = new Color(34, 197, 94);       // Green
-    private static final Color DANGER_COLOR = new Color(239, 68, 68);       // Red
-    private static final Color WARNING_COLOR = new Color(245, 158, 11);     // Amber
-    private static final Color TEXT_PRIMARY = new Color(17, 24, 39);        // Dark Gray
-    private static final Color TEXT_SECONDARY = new Color(107, 114, 128);   // Medium Gray
-    private static final Color BORDER_COLOR = new Color(229, 231, 235);     // Light Border
-    private static final Color CARD_BG = Color.WHITE;
-    
-    // Data Storage
-    private DataManager dataManager;
+
     private JTabbedPane tabbedPane;
-    private JLabel timeLabel;
-    private Timer clockTimer;
-    
+    private EmployeeDataManager dataManager;
+
     public Project() {
-        dataManager = new DataManager();
-        initializeComponents();
-        setupUI();
-        startClock();
-        setVisible(true);
-    }
-    
-    private void initializeComponents() {
-        setTitle("MotorPH Employee Management System");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1400, 900);
+        setTitle("MotorPH Employee Management System 2025");
+        setSize(1200, 800);
         setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
-        
-        // Set modern look and feel
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        dataManager = new EmployeeDataManager();
+        initUI();
+    }
+
+    private void initUI() {
+        // Set Look and Feel with custom colors
         try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeel());
+            for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                if ("Nimbus".equals(info.getName())) {
+                    UIManager.setLookAndFeel(info.getClassName());
+                    break;
+                }
+            }
+            
+            // Custom color scheme
+            UIManager.put("control", new Color(240, 240, 240));
+            UIManager.put("info", new Color(245, 245, 245));
+            UIManager.put("nimbusBase", new Color(51, 98, 140));
+            UIManager.put("nimbusAlertYellow", new Color(255, 220, 35));
+            UIManager.put("nimbusDisabledText", new Color(142, 143, 145));
+            UIManager.put("nimbusFocus", new Color(115, 164, 209));
+            UIManager.put("nimbusGreen", new Color(176, 179, 50));
+            UIManager.put("nimbusInfoBlue", new Color(66, 139, 221));
+            UIManager.put("nimbusLightBackground", new Color(255, 255, 255));
+            UIManager.put("nimbusOrange", new Color(191, 98, 4));
+            UIManager.put("nimbusRed", new Color(169, 46, 34));
+            UIManager.put("nimbusSelectedText", new Color(255, 255, 255));
+            UIManager.put("nimbusSelectionBackground", new Color(57, 105, 138));
+            UIManager.put("text", new Color(0, 0, 0));
+            
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-    
-    private void setupUI() {
-        // Header Panel
-        add(createHeaderPanel(), BorderLayout.NORTH);
+
+        // Create custom header panel
+        JPanel headerPanel = createHeaderPanel();
         
-        // Main Content with Tabs
-        tabbedPane = createTabbedPane();
+        tabbedPane = new JTabbedPane();
+        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        tabbedPane.setBackground(new Color(245, 245, 245));
+        tabbedPane.setTabPlacement(JTabbedPane.TOP);
+
+        // Add tabs with better styling
+        tabbedPane.addTab("👥 Employees", new EmployeePanel());
+        tabbedPane.addTab("🏢 Departments", new DepartmentPanel());
+        tabbedPane.addTab("⏰ Attendance", new AttendancePanel());
+        tabbedPane.addTab("💰 Payroll", new PayslipPanel());
+        tabbedPane.addTab("📋 Leave Requests", new LeaveRequestPanel());
+
+        // Main layout
+        setLayout(new BorderLayout());
+        add(headerPanel, BorderLayout.NORTH);
         add(tabbedPane, BorderLayout.CENTER);
         
-        // Status Bar
-        add(createStatusBar(), BorderLayout.SOUTH);
+        // Add menu bar
+        setJMenuBar(createMenuBar());
     }
     
     private JPanel createHeaderPanel() {
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(CARD_BG);
-        header.setBorder(new CompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR),
-            BorderFactory.createEmptyBorder(16, 24, 16, 24)
-        ));
-        header.setPreferredSize(new Dimension(0, 80));
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BorderLayout());
+        headerPanel.setBackground(new Color(51, 98, 140));
+        headerPanel.setPreferredSize(new Dimension(0, 80));
         
-        // Left side - Logo and title
-        JPanel leftPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        leftPanel.setBackground(CARD_BG);
+        // Title section
+        JPanel titlePanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        titlePanel.setBackground(new Color(51, 98, 140));
         
-        // Logo
-        JPanel logoPanel = new JPanel();
-        logoPanel.setBackground(PRIMARY_COLOR);
-        logoPanel.setPreferredSize(new Dimension(40, 40));
-        logoPanel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(PRIMARY_COLOR, 2),
-            BorderFactory.createEmptyBorder(8, 8, 8, 8)
-        ));
-        JLabel logoLabel = new JLabel("M", SwingConstants.CENTER);
-        logoLabel.setForeground(Color.WHITE);
-        logoLabel.setFont(new Font("Arial", Font.BOLD, 18));
-        logoPanel.add(logoLabel);
+        JLabel titleLabel = new JLabel("MotorPH Employee Management System");
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        titleLabel.setForeground(Color.WHITE);
         
-        // Title
-        JPanel titlePanel = new JPanel(new GridLayout(2, 1));
-        titlePanel.setBackground(CARD_BG);
-        titlePanel.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 0));
+        JLabel subtitleLabel = new JLabel("Comprehensive HR Management Solution");
+        subtitleLabel.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+        subtitleLabel.setForeground(new Color(200, 220, 240));
         
-        JLabel titleLabel = new JLabel("MotorPH");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 20));
-        titleLabel.setForeground(TEXT_PRIMARY);
+        JPanel textPanel = new JPanel();
+        textPanel.setLayout(new BoxLayout(textPanel, BoxLayout.Y_AXIS));
+        textPanel.setBackground(new Color(51, 98, 140));
+        textPanel.add(titleLabel);
+        textPanel.add(subtitleLabel);
         
-        JLabel subtitleLabel = new JLabel("Employee Management System");
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        subtitleLabel.setForeground(TEXT_SECONDARY);
+        titlePanel.add(textPanel);
         
-        titlePanel.add(titleLabel);
-        titlePanel.add(subtitleLabel);
+        // Stats section
+        JPanel statsPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        statsPanel.setBackground(new Color(51, 98, 140));
         
-        leftPanel.add(logoPanel);
-        leftPanel.add(titlePanel);
+        JLabel empCountLabel = new JLabel("Employees: " + dataManager.getEmployees().size());
+        empCountLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        empCountLabel.setForeground(Color.WHITE);
+        empCountLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         
-        // Right side - Time and user info
-        JPanel rightPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 0));
-        rightPanel.setBackground(CARD_BG);
+        JLabel deptCountLabel = new JLabel("Departments: " + dataManager.getDepartments().size());
+        deptCountLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        deptCountLabel.setForeground(Color.WHITE);
+        deptCountLabel.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
         
-        // Time display
-        timeLabel = new JLabel();
-        timeLabel.setFont(new Font("Arial", Font.PLAIN, 14));
-        timeLabel.setForeground(TEXT_SECONDARY);
+        statsPanel.add(empCountLabel);
+        statsPanel.add(deptCountLabel);
         
-        // User avatar
-        JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        userPanel.setBackground(CARD_BG);
+        headerPanel.add(titlePanel, BorderLayout.WEST);
+        headerPanel.add(statsPanel, BorderLayout.EAST);
         
-        JPanel avatar = new JPanel();
-        avatar.setBackground(SECONDARY_COLOR);
-        avatar.setPreferredSize(new Dimension(32, 32));
-        avatar.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BORDER_COLOR, 1),
-            BorderFactory.createEmptyBorder(6, 6, 6, 6)
-        ));
-        JLabel avatarLabel = new JLabel("A", SwingConstants.CENTER);
-        avatarLabel.setForeground(TEXT_SECONDARY);
-        avatarLabel.setFont(new Font("Arial", Font.BOLD, 12));
-        avatar.add(avatarLabel);
-        
-        JLabel userLabel = new JLabel("Admin User");
-        userLabel.setFont(new Font("Arial", Font.MEDIUM, 14));
-        userLabel.setForeground(TEXT_PRIMARY);
-        
-        userPanel.add(avatar);
-        userPanel.add(userLabel);
-        
-        rightPanel.add(timeLabel);
-        rightPanel.add(userPanel);
-        
-        header.add(leftPanel, BorderLayout.WEST);
-        header.add(rightPanel, BorderLayout.EAST);
-        
-        return header;
+        return headerPanel;
     }
-    
-    private JTabbedPane createTabbedPane() {
-        JTabbedPane tabs = new JTabbedPane();
-        tabs.setFont(new Font("Arial", Font.PLAIN, 14));
-        tabs.setBackground(SECONDARY_COLOR);
+
+    private JMenuBar createMenuBar() {
+        JMenuBar menuBar = new JMenuBar();
         
-        // Add tabs with modern styling
-        tabs.addTab("👥 Employee", new EmployeePanel());
-        tabs.addTab("🏢 Department", new DepartmentPanel());
-        tabs.addTab("🕒 Attendance", new AttendancePanel());
-        tabs.addTab("💰 Payslip", new PayslipPanel());
-        tabs.addTab("📋 Leave Request", new LeaveRequestPanel());
+        JMenu fileMenu = new JMenu("File");
+        JMenuItem exportItem = new JMenuItem("Export Data");
+        JMenuItem importItem = new JMenuItem("Import Data");
+        JMenuItem exitItem = new JMenuItem("Exit");
         
-        return tabs;
+        exportItem.addActionListener(e -> dataManager.exportData());
+        importItem.addActionListener(e -> dataManager.importData());
+        exitItem.addActionListener(e -> System.exit(0));
+        
+        fileMenu.add(exportItem);
+        fileMenu.add(importItem);
+        fileMenu.addSeparator();
+        fileMenu.add(exitItem);
+        
+        JMenu helpMenu = new JMenu("Help");
+        JMenuItem aboutItem = new JMenuItem("About");
+        aboutItem.addActionListener(e -> showAboutDialog());
+        helpMenu.add(aboutItem);
+        
+        menuBar.add(fileMenu);
+        menuBar.add(helpMenu);
+        
+        return menuBar;
     }
-    
-    private JPanel createStatusBar() {
-        JPanel statusBar = new JPanel(new BorderLayout());
-        statusBar.setBackground(SECONDARY_COLOR);
-        statusBar.setBorder(new CompoundBorder(
-            BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER_COLOR),
-            BorderFactory.createEmptyBorder(8, 16, 8, 16)
-        ));
-        statusBar.setPreferredSize(new Dimension(0, 32));
-        
-        JLabel statusLabel = new JLabel("Ready");
-        statusLabel.setFont(new Font("Arial", Font.PLAIN, 12));
-        statusLabel.setForeground(TEXT_SECONDARY);
-        
-        statusBar.add(statusLabel, BorderLayout.WEST);
-        
-        return statusBar;
+
+    private void showAboutDialog() {
+        JOptionPane.showMessageDialog(this,
+            "MotorPH Employee Management System\n" +
+            "Version 2.0\n" +
+            "Developed for comprehensive employee management\n" +
+            "© 2025 MotorPH Corporation",
+            "About",
+            JOptionPane.INFORMATION_MESSAGE);
     }
-    
-    private void startClock() {
-        clockTimer = new Timer(1000, e -> {
-            LocalDateTime now = LocalDateTime.now();
-            String timeString = now.format(DateTimeFormatter.ofPattern("h:mm a"));
-            timeLabel.setText("🕒 " + timeString);
-        });
-        clockTimer.start();
-    }
-    
-    // Modern Button Factory
-    private JButton createModernButton(String text, Color bgColor, ActionListener listener) {
-        JButton button = new JButton(text);
-        button.setFont(new Font("Arial", Font.MEDIUM, 13));
-        button.setForeground(Color.WHITE);
-        button.setBackground(bgColor);
-        button.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
-        button.setFocusPainted(false);
-        button.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        
-        // Hover effect
-        button.addMouseListener(new MouseAdapter() {
-            public void mouseEntered(MouseEvent e) {
-                button.setBackground(bgColor.darker());
-            }
-            public void mouseExited(MouseEvent e) {
-                button.setBackground(bgColor);
-            }
-        });
-        
-        if (listener != null) {
-            button.addActionListener(listener);
+
+    // ***** Data Management Class *****
+    class EmployeeDataManager {
+        private List<Employee> employees;
+        private List<Department> departments;
+        private List<AttendanceRecord> attendanceRecords;
+        private List<PaySlip> paySlips;
+        private List<LeaveRequest> leaveRequests;
+
+        public EmployeeDataManager() {
+            employees = new ArrayList<>();
+            departments = new ArrayList<>();
+            attendanceRecords = new ArrayList<>();
+            paySlips = new ArrayList<>();
+            leaveRequests = new ArrayList<>();
+            loadSampleData();
         }
-        
-        return button;
+
+        private void loadSampleData() {
+            // Sample departments
+            departments.add(new Department("IT", "John Smith"));
+            departments.add(new Department("HR", "Sarah Johnson"));
+            departments.add(new Department("Finance", "Michael Brown"));
+            
+            // Sample employees
+            employees.add(new Employee(1001, "Alice", "Williams", "1990-05-15", "Software Developer", "IT"));
+            employees.add(new Employee(1002, "Bob", "Davis", "1988-08-22", "HR Manager", "HR"));
+            employees.add(new Employee(1003, "Carol", "Miller", "1992-12-10", "Accountant", "Finance"));
+        }
+
+        public void addEmployee(Employee employee) { employees.add(employee); }
+        public void addDepartment(Department department) { departments.add(department); }
+        public void addAttendanceRecord(AttendanceRecord record) { attendanceRecords.add(record); }
+        public void addPaySlip(PaySlip paySlip) { paySlips.add(paySlip); }
+        public void addLeaveRequest(LeaveRequest request) { leaveRequests.add(request); }
+
+        public List<Employee> getEmployees() { return employees; }
+        public List<Department> getDepartments() { return departments; }
+        public List<AttendanceRecord> getAttendanceRecords() { return attendanceRecords; }
+        public List<PaySlip> getPaySlips() { return paySlips; }
+        public List<LeaveRequest> getLeaveRequests() { return leaveRequests; }
+
+        public Employee findEmployeeById(int id) {
+            return employees.stream().filter(emp -> emp.getEmployeeID() == id).findFirst().orElse(null);
+        }
+
+        public void exportData() {
+            try {
+                PrintWriter writer = new PrintWriter(new FileWriter("motorph_data.txt"));
+                writer.println("=== MotorPH Employee Data Export ===");
+                writer.println("Export Date: " + LocalDateTime.now());
+                writer.println("\n--- EMPLOYEES ---");
+                for (Employee emp : employees) {
+                    writer.println(emp.getEmployeeInfo());
+                }
+                writer.println("\n--- DEPARTMENTS ---");
+                for (Department dept : departments) {
+                    writer.println(dept.getDepartmentInfo());
+                }
+                writer.close();
+                JOptionPane.showMessageDialog(null, "Data exported successfully to motorph_data.txt");
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(null, "Export failed: " + e.getMessage());
+            }
+        }
+
+        public void importData() {
+            JOptionPane.showMessageDialog(null, "Import functionality will be implemented in future versions");
+        }
     }
-    
-    // Modern Text Field Factory
-    private JTextField createModernTextField(int columns) {
-        JTextField field = new JTextField(columns);
-        field.setFont(new Font("Arial", Font.PLAIN, 14));
-        field.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(BORDER_COLOR, 1),
-            BorderFactory.createEmptyBorder(8, 12, 8, 12)
-        ));
-        field.setBackground(Color.WHITE);
-        return field;
-    }
-    
-    // Modern Table Factory
-    private JTable createModernTable(DefaultTableModel model) {
-        JTable table = new JTable(model);
-        table.setFont(new Font("Arial", Font.PLAIN, 13));
-        table.setRowHeight(40);
-        table.setSelectionBackground(PRIMARY_COLOR.brighter());
-        table.setSelectionForeground(Color.WHITE);
-        table.setGridColor(BORDER_COLOR);
-        table.setShowGrid(true);
-        table.setIntercellSpacing(new Dimension(1, 1));
+
+    // ***** Enhanced Domain Classes *****
+
+    public static class Employee {
+        private int employeeID;
+        private String firstName, lastName, birthDate, contactNumber, address, position, department;
+        private double salary;
+        private LocalDateTime dateHired;
+
+        public Employee(int employeeID, String firstName, String lastName, String birthDate, String position, String department) {
+            this.employeeID = employeeID;
+            this.firstName = firstName;
+            this.lastName = lastName;
+            this.birthDate = birthDate;
+            this.position = position;
+            this.department = department;
+            this.salary = 25000.0; // Default salary
+            this.dateHired = LocalDateTime.now();
+        }
+
+        // Getters and Setters
+        public int getEmployeeID() { return employeeID; }
+        public String getFirstName() { return firstName; }
+        public String getLastName() { return lastName; }
+        public String getBirthDate() { return birthDate; }
+        public String getPosition() { return position; }
+        public String getDepartment() { return department; }
+        public double getSalary() { return salary; }
         
-        // Header styling
-        JTableHeader header = table.getTableHeader();
-        header.setFont(new Font("Arial", Font.BOLD, 13));
-        header.setBackground(SECONDARY_COLOR);
-        header.setForeground(TEXT_PRIMARY);
-        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER_COLOR));
-        
-        return table;
+        public void setSalary(double salary) { this.salary = salary; }
+        public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+        public void setAddress(String address) { this.address = address; }
+
+        public String getFullName() {
+            return firstName + " " + lastName;
+        }
+
+        public String getEmployeeInfo() {
+            return String.format("ID: %d | Name: %s | Birth: %s | Position: %s | Department: %s | Salary: $%.2f%s%s",
+                employeeID, getFullName(), birthDate, position, department, salary,
+                (contactNumber != null ? " | Contact: " + contactNumber : ""),
+                (address != null ? " | Address: " + address : ""));
+        }
+
+        public Object[] toTableRow() {
+            return new Object[]{employeeID, getFullName(), position, department, 
+                               String.format("$%.2f", salary), contactNumber != null ? contactNumber : "N/A"};
+        }
     }
-    
-    // Employee Panel
+
+    public static class Department {
+        private String name;
+        private String managerName;
+        private int employeeCount;
+        private double budget;
+
+        public Department(String name, String managerName) {
+            this.name = name;
+            this.managerName = managerName;
+            this.employeeCount = 0;
+            this.budget = 500000.0; // Default budget
+        }
+
+        public String getName() { return name; }
+        public String getManagerName() { return managerName; }
+        public int getEmployeeCount() { return employeeCount; }
+        public double getBudget() { return budget; }
+        
+        public void setEmployeeCount(int count) { this.employeeCount = count; }
+        public void setBudget(double budget) { this.budget = budget; }
+
+        public String getDepartmentInfo() {
+            return String.format("Department: %s | Manager: %s | Employees: %d | Budget: $%.2f",
+                name, managerName, employeeCount, budget);
+        }
+
+        public Object[] toTableRow() {
+            return new Object[]{name, managerName, employeeCount, String.format("$%.2f", budget)};
+        }
+    }
+
+    public static class AttendanceRecord {
+        private String date, timeIn, timeOut;
+        private Employee employee;
+        private boolean isLate;
+        private double hoursWorked;
+
+        public AttendanceRecord(String date, String timeIn, String timeOut, Employee employee) {
+            this.date = date;
+            this.timeIn = timeIn;
+            this.timeOut = timeOut;
+            this.employee = employee;
+            this.hoursWorked = calculateHoursWorked();
+            this.isLate = isLate();
+        }
+
+        public double calculateHoursWorked() {
+            try {
+                String[] in = timeIn.split(":");
+                String[] out = timeOut.split(":");
+                int inHours = Integer.parseInt(in[0]);
+                int inMinutes = Integer.parseInt(in[1]);
+                int outHours = Integer.parseInt(out[0]);
+                int outMinutes = Integer.parseInt(out[1]);
+                double worked = (outHours - inHours) + (outMinutes - inMinutes) / 60.0;
+                return worked > 0 ? worked : 0;
+            } catch (Exception e) {
+                return 0;
+            }
+        }
+
+        public boolean isLate() {
+            try {
+                String[] in = timeIn.split(":");
+                int hour = Integer.parseInt(in[0]);
+                int minute = Integer.parseInt(in[1]);
+                return hour > 9 || (hour == 9 && minute > 0);
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        public String getAttendanceInfo() {
+            return String.format("Date: %s | Employee: %s | Hours: %.2f | Late: %s",
+                date, employee.getFullName(), hoursWorked, isLate ? "Yes" : "No");
+        }
+
+        public Object[] toTableRow() {
+            return new Object[]{date, employee.getFullName(), timeIn, timeOut, 
+                               String.format("%.2f hrs", hoursWorked), isLate ? "Late" : "On Time"};
+        }
+    }
+
+    public static class PaySlip {
+        private int paySlipID;
+        private Employee employee;
+        private double basicSalary, allowances, deductions, netPay;
+        private String periodCovered;
+        private LocalDate generatedDate;
+
+        public PaySlip(int paySlipID, Employee employee, String periodCovered) {
+            this.paySlipID = paySlipID;
+            this.employee = employee;
+            this.periodCovered = periodCovered;
+            this.basicSalary = employee.getSalary();
+            this.allowances = basicSalary * 0.1; // 10% allowances
+            this.deductions = basicSalary * 0.15; // 15% deductions (tax, insurance, etc.)
+            this.generatedDate = LocalDate.now();
+            calculateNetPay();
+        }
+
+        public void calculateNetPay() {
+            netPay = basicSalary + allowances - deductions;
+        }
+
+        public String generatePaySlip() {
+            return String.format("PaySlip ID: %d | Employee: %s | Period: %s | Net Pay: $%.2f | Generated: %s",
+                paySlipID, employee.getFullName(), periodCovered, netPay, generatedDate);
+        }
+
+        public Object[] toTableRow() {
+            return new Object[]{paySlipID, employee.getFullName(), periodCovered, 
+                               String.format("$%.2f", basicSalary), String.format("$%.2f", netPay)};
+        }
+
+        public String getDetailedPaySlip() {
+            return String.format(
+                "=== MOTORPH PAYSLIP ===\n" +
+                "Employee: %s (ID: %d)\n" +
+                "Position: %s\n" +
+                "Department: %s\n" +
+                "Pay Period: %s\n" +
+                "Generated: %s\n\n" +
+                "EARNINGS:\n" +
+                "Basic Salary: $%.2f\n" +
+                "Allowances: $%.2f\n" +
+                "Gross Pay: $%.2f\n\n" +
+                "DEDUCTIONS:\n" +
+                "Tax & Insurance: $%.2f\n\n" +
+                "NET PAY: $%.2f",
+                employee.getFullName(), employee.getEmployeeID(),
+                employee.getPosition(), employee.getDepartment(),
+                periodCovered, generatedDate,
+                basicSalary, allowances, basicSalary + allowances,
+                deductions, netPay);
+        }
+    }
+
+    public static class LeaveRequest {
+        private int requestID;
+        private Employee employee;
+        private String leaveType, startDate, endDate, reason, status;
+        private LocalDateTime submittedDate;
+
+        public LeaveRequest(int requestID, Employee employee, String leaveType, String startDate, String endDate, String reason) {
+            this.requestID = requestID;
+            this.employee = employee;
+            this.leaveType = leaveType;
+            this.startDate = startDate;
+            this.endDate = endDate;
+            this.reason = reason;
+            this.status = "Pending";
+            this.submittedDate = LocalDateTime.now();
+        }
+
+        public void approveLeave() { this.status = "Approved"; }
+        public void rejectLeave() { this.status = "Rejected"; }
+        public String getStatus() { return status; }
+
+        public long calculateLeaveDays() {
+            try {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                LocalDate start = LocalDate.parse(startDate, formatter);
+                LocalDate end = LocalDate.parse(endDate, formatter);
+                return java.time.temporal.ChronoUnit.DAYS.between(start, end) + 1;
+            } catch(Exception e) {
+                return 1;
+            }
+        }
+
+        public String getLeaveDetails() {
+            return String.format("Request ID: %d | Employee: %s | Type: %s | Duration: %d days | Status: %s",
+                requestID, employee.getFullName(), leaveType, calculateLeaveDays(), status);
+        }
+
+        public Object[] toTableRow() {
+            return new Object[]{requestID, employee.getFullName(), leaveType, startDate, endDate, 
+                               calculateLeaveDays() + " days", status};
+        }
+    }
+
+    // ***** Enhanced UI Panels *****
+
     class EmployeePanel extends JPanel {
-        private JTextField idField, empIdField, nameField, positionField, departmentField, salaryField, searchField;
+        private JTextField idField, firstNameField, lastNameField, birthDateField,
+                           positionField, departmentField, contactField, addressField, salaryField;
         private JTable employeeTable;
         private DefaultTableModel tableModel;
-        private JTextArea statusArea;
-        
+        private JTextArea resultArea;
+
         public EmployeePanel() {
-            setLayout(new BorderLayout(16, 16));
-            setBackground(SECONDARY_COLOR);
-            setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+            setLayout(new BorderLayout(10, 10));
+            setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
             
-            // Create main content
-            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-            splitPane.setLeftComponent(createEmployeeForm());
-            splitPane.setRightComponent(createEmployeeTable());
-            splitPane.setDividerLocation(500);
+            // Create form panel
+            JPanel formPanel = createEmployeeForm();
+            
+            // Create table panel
+            JPanel tablePanel = createEmployeeTable();
+            
+            // Create enhanced status panel
+            JPanel statusMainPanel = new JPanel(new BorderLayout());
+            statusMainPanel.setBackground(Color.WHITE);
+            
+            JPanel statusHeaderPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            statusHeaderPanel.setBackground(new Color(76, 175, 80));
+            statusHeaderPanel.setPreferredSize(new Dimension(0, 35));
+            
+            JLabel statusHeaderLabel = new JLabel("System Status");
+            statusHeaderLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            statusHeaderLabel.setForeground(Color.WHITE);
+            statusHeaderPanel.add(statusHeaderLabel);
+            
+            resultArea = new JTextArea(3, 40);
+            resultArea.setEditable(false);
+            resultArea.setBackground(new Color(248, 249, 250));
+            resultArea.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            resultArea.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            resultArea.setText("Ready to manage employee records. Select an employee from the table to edit or create a new one.");
+            
+            JScrollPane resultScroll = new JScrollPane(resultArea);
+            resultScroll.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
+            
+            statusMainPanel.add(statusHeaderPanel, BorderLayout.NORTH);
+            statusMainPanel.add(resultScroll, BorderLayout.CENTER);
+            
+            // Layout with proper sizing
+            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, formPanel, tablePanel);
+            splitPane.setDividerLocation(450);
+            splitPane.setResizeWeight(0.4);
             splitPane.setBorder(null);
             
             add(splitPane, BorderLayout.CENTER);
-            add(createEmployeeControls(), BorderLayout.SOUTH);
+            add(statusMainPanel, BorderLayout.SOUTH);
             
             refreshEmployeeTable();
         }
-        
+
         private JPanel createEmployeeForm() {
-            JPanel formCard = new JPanel(new BorderLayout());
-            formCard.setBackground(CARD_BG);
-            formCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                BorderFactory.createEmptyBorder(20, 20, 20, 20)
-            ));
+            JPanel mainPanel = new JPanel(new BorderLayout());
+            mainPanel.setBackground(Color.WHITE);
             
-            // Form header
-            JLabel headerLabel = new JLabel("Employee Information");
-            headerLabel.setFont(new Font("Arial", Font.BOLD, 18));
-            headerLabel.setForeground(TEXT_PRIMARY);
-            headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+            // Header section
+            JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            headerPanel.setBackground(new Color(51, 98, 140));
+            headerPanel.setPreferredSize(new Dimension(0, 50));
             
-            // Form fields
-            JPanel fieldsPanel = new JPanel(new GridBagLayout());
-            fieldsPanel.setBackground(CARD_BG);
+            JLabel headerLabel = new JLabel("Employee Registration");
+            headerLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+            headerLabel.setForeground(Color.WHITE);
+            headerPanel.add(headerLabel);
+            
+            // Form section
+            JPanel formPanel = new JPanel(new GridBagLayout());
+            formPanel.setBackground(Color.WHITE);
+            formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
             GridBagConstraints gbc = new GridBagConstraints();
-            gbc.insets = new Insets(8, 0, 8, 16);
+            gbc.insets = new Insets(8, 8, 8, 8);
             gbc.anchor = GridBagConstraints.WEST;
+
+            // Initialize styled fields
+            idField = createStyledTextField(15);
+            firstNameField = createStyledTextField(15);
+            lastNameField = createStyledTextField(15);
+            birthDateField = createStyledTextField("1990-01-01", 15);
+            positionField = createStyledTextField(15);
+            departmentField = createStyledTextField(15);
+            contactField = createStyledTextField(15);
+            addressField = createStyledTextField(15);
+            salaryField = createStyledTextField("25000.00", 15);
+
+            // Add components with styled labels
+            gbc.gridx = 0; gbc.gridy = 0; formPanel.add(createStyledLabel("Employee ID:"), gbc);
+            gbc.gridx = 1; formPanel.add(idField, gbc);
             
-            // Initialize fields
-            idField = createModernTextField(15);
-            empIdField = createModernTextField(15);
-            nameField = createModernTextField(15);
-            positionField = createModernTextField(15);
-            departmentField = createModernTextField(15);
-            salaryField = createModernTextField(15);
+            gbc.gridx = 0; gbc.gridy = 1; formPanel.add(createStyledLabel("First Name:"), gbc);
+            gbc.gridx = 1; formPanel.add(firstNameField, gbc);
             
-            // Add form fields
-            String[] labels = {"ID:", "Employee ID:", "Full Name:", "Position:", "Department:", "Salary:"};
-            JTextField[] fields = {idField, empIdField, nameField, positionField, departmentField, salaryField};
+            gbc.gridx = 0; gbc.gridy = 2; formPanel.add(createStyledLabel("Last Name:"), gbc);
+            gbc.gridx = 1; formPanel.add(lastNameField, gbc);
             
-            for (int i = 0; i < labels.length; i++) {
-                gbc.gridx = 0; gbc.gridy = i;
-                JLabel label = new JLabel(labels[i]);
-                label.setFont(new Font("Arial", Font.MEDIUM, 14));
-                label.setForeground(TEXT_PRIMARY);
-                fieldsPanel.add(label, gbc);
-                
-                gbc.gridx = 1; gbc.fill = GridBagConstraints.HORIZONTAL;
-                fieldsPanel.add(fields[i], gbc);
-                gbc.fill = GridBagConstraints.NONE;
-            }
+            gbc.gridx = 0; gbc.gridy = 3; formPanel.add(createStyledLabel("Birth Date:"), gbc);
+            gbc.gridx = 1; formPanel.add(birthDateField, gbc);
             
-            // Action buttons
-            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 16));
-            buttonPanel.setBackground(CARD_BG);
+            gbc.gridx = 0; gbc.gridy = 4; formPanel.add(createStyledLabel("Position:"), gbc);
+            gbc.gridx = 1; formPanel.add(positionField, gbc);
             
-            buttonPanel.add(createModernButton("💾 Save", ACCENT_COLOR, this::saveEmployee));
-            buttonPanel.add(createModernButton("✏️ Update", WARNING_COLOR, this::updateEmployee));
-            buttonPanel.add(createModernButton("🗑️ Delete", DANGER_COLOR, this::deleteEmployee));
-            buttonPanel.add(createModernButton("🗞️ Clear", TEXT_SECONDARY, this::clearEmployeeForm));
+            gbc.gridx = 0; gbc.gridy = 5; formPanel.add(createStyledLabel("Department:"), gbc);
+            gbc.gridx = 1; formPanel.add(departmentField, gbc);
             
-            formCard.add(headerLabel, BorderLayout.NORTH);
-            formCard.add(fieldsPanel, BorderLayout.CENTER);
-            formCard.add(buttonPanel, BorderLayout.SOUTH);
+            gbc.gridx = 0; gbc.gridy = 6; formPanel.add(createStyledLabel("Salary ($):"), gbc);
+            gbc.gridx = 1; formPanel.add(salaryField, gbc);
             
-            return formCard;
+            gbc.gridx = 0; gbc.gridy = 7; formPanel.add(createStyledLabel("Contact:"), gbc);
+            gbc.gridx = 1; formPanel.add(contactField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 8; formPanel.add(createStyledLabel("Address:"), gbc);
+            gbc.gridx = 1; formPanel.add(addressField, gbc);
+
+            // Buttons section
+            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+            buttonPanel.setBackground(Color.WHITE);
+            buttonPanel.setBorder(BorderFactory.createEmptyBorder(10, 0, 10, 0));
+            
+            JButton saveButton = createStyledButton("Save Employee", new Color(76, 175, 80));
+            JButton clearButton = createStyledButton("Clear Form", new Color(255, 152, 0));
+            JButton deleteButton = createStyledButton("Delete Selected", new Color(244, 67, 54));
+            
+            saveButton.addActionListener(this::saveEmployee);
+            clearButton.addActionListener(e -> clearForm());
+            deleteButton.addActionListener(this::deleteEmployee);
+            
+            buttonPanel.add(saveButton);
+            buttonPanel.add(clearButton);
+            buttonPanel.add(deleteButton);
+            
+            gbc.gridx = 0; gbc.gridy = 9; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.HORIZONTAL;
+            formPanel.add(buttonPanel, gbc);
+
+            mainPanel.add(headerPanel, BorderLayout.NORTH);
+            mainPanel.add(formPanel, BorderLayout.CENTER);
+            
+            return mainPanel;
         }
         
-        private JPanel createEmployeeTable() {
-            JPanel tableCard = new JPanel(new BorderLayout());
-            tableCard.setBackground(CARD_BG);
-            tableCard.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
-                BorderFactory.createEmptyBorder(20, 20, 20, 20)
+        private JLabel createStyledLabel(String text) {
+            JLabel label = new JLabel(text);
+            label.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            label.setForeground(new Color(51, 51, 51));
+            return label;
+        }
+        
+        private JTextField createStyledTextField(int columns) {
+            return createStyledTextField("", columns);
+        }
+        
+        private JTextField createStyledTextField(String text, int columns) {
+            JTextField field = new JTextField(text, columns);
+            field.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(200, 200, 200), 1),
+                BorderFactory.createEmptyBorder(5, 8, 5, 8)
             ));
+            field.setBackground(Color.WHITE);
+            return field;
+        }
+        
+        private JButton createStyledButton(String text, Color bgColor) {
+            JButton button = new JButton(text);
+            button.setFont(new Font("Segoe UI", Font.BOLD, 11));
+            button.setBackground(bgColor);
+            button.setForeground(Color.WHITE);
+            button.setBorder(BorderFactory.createEmptyBorder(8, 16, 8, 16));
+            button.setFocusPainted(false);
+            button.setCursor(new Cursor(Cursor.HAND_CURSOR));
             
-            // Table header with search
-            JPanel tableHeader = new JPanel(new BorderLayout());
-            tableHeader.setBackground(CARD_BG);
-            
-            JLabel tableTitle = new JLabel("Employee Records");
-            tableTitle.setFont(new Font("Arial", Font.BOLD, 18));
-            tableTitle.setForeground(TEXT_PRIMARY);
-            
-            JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-            searchPanel.setBackground(CARD_BG);
-            searchField = createModernTextField(20);
-            searchField.addKeyListener(new KeyAdapter() {
-                public void keyReleased(KeyEvent e) {
-                    searchEmployees();
+            // Hover effect
+            button.addMouseListener(new MouseAdapter() {
+                Color originalColor = bgColor;
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    button.setBackground(originalColor.darker());
+                }
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    button.setBackground(originalColor);
                 }
             });
             
-            JLabel searchLabel = new JLabel("🔍 Search:");
-            searchLabel.setFont(new Font("Arial", Font.MEDIUM, 14));
-            searchLabel.setForeground(TEXT_SECONDARY);
+            return button;
+        }
+
+        private JPanel createEmployeeTable() {
+            JPanel mainPanel = new JPanel(new BorderLayout());
+            mainPanel.setBackground(Color.WHITE);
+            
+            // Header section
+            JPanel headerPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+            headerPanel.setBackground(new Color(51, 98, 140));
+            headerPanel.setPreferredSize(new Dimension(0, 50));
+            
+            JLabel headerLabel = new JLabel("Employee Records (" + dataManager.getEmployees().size() + " employees)");
+            headerLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+            headerLabel.setForeground(Color.WHITE);
+            headerPanel.add(headerLabel);
+            
+            // Search panel
+            JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+            searchPanel.setBackground(Color.WHITE);
+            searchPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            
+            JLabel searchLabel = new JLabel("Search:");
+            searchLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+            JTextField searchField = createStyledTextField(15);
+            searchField.addKeyListener(new KeyAdapter() {
+                @Override
+                public void keyReleased(KeyEvent e) {
+                    filterEmployeeTable(searchField.getText());
+                }
+            });
             
             searchPanel.add(searchLabel);
             searchPanel.add(searchField);
             
-            tableHeader.add(tableTitle, BorderLayout.WEST);
-            tableHeader.add(searchPanel, BorderLayout.EAST);
-            tableHeader.setBorder(BorderFactory.createEmptyBorder(0, 0, 16, 0));
-            
-            // Table
-            String[] columns = {"ID", "Emp ID", "Name", "Position", "Department", "Salary"};
+            // Table section
+            String[] columns = {"ID", "Full Name", "Position", "Department", "Salary", "Contact"};
             tableModel = new DefaultTableModel(columns, 0) {
                 @Override
                 public boolean isCellEditable(int row, int column) {
@@ -384,8 +703,20 @@ public class Project extends JFrame {
                 }
             };
             
-            employeeTable = createModernTable(tableModel);
+            employeeTable = new JTable(tableModel);
+            employeeTable.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            employeeTable.setRowHeight(25);
             employeeTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            employeeTable.setGridColor(new Color(230, 230, 230));
+            employeeTable.setSelectionBackground(new Color(184, 207, 229));
+            employeeTable.setSelectionForeground(Color.BLACK);
+            
+            // Header styling
+            employeeTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+            employeeTable.getTableHeader().setBackground(new Color(240, 240, 240));
+            employeeTable.getTableHeader().setForeground(new Color(51, 51, 51));
+            employeeTable.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(51, 98, 140)));
+            
             employeeTable.getSelectionModel().addListSelectionListener(e -> {
                 if (!e.getValueIsAdjusting()) {
                     loadSelectedEmployee();
@@ -393,370 +724,740 @@ public class Project extends JFrame {
             });
             
             JScrollPane scrollPane = new JScrollPane(employeeTable);
-            scrollPane.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
+            scrollPane.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200), 1));
+            scrollPane.getViewport().setBackground(Color.WHITE);
             
-            tableCard.add(tableHeader, BorderLayout.NORTH);
-            tableCard.add(scrollPane, BorderLayout.CENTER);
+            mainPanel.add(headerPanel, BorderLayout.NORTH);
+            mainPanel.add(searchPanel, BorderLayout.CENTER);
+            mainPanel.add(scrollPane, BorderLayout.SOUTH);
             
-            return tableCard;
+            return mainPanel;
         }
         
-        private JPanel createEmployeeControls() {
-            JPanel controlsPanel = new JPanel(new BorderLayout());
-            controlsPanel.setBackground(SECONDARY_COLOR);
-            controlsPanel.setBorder(BorderFactory.createEmptyBorder(16, 0, 0, 0));
-            
-            // CSV Controls
-            JPanel csvPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-            csvPanel.setBackground(SECONDARY_COLOR);
-            
-            csvPanel.add(createModernButton("📤 Export CSV", PRIMARY_COLOR, this::exportToCSV));
-            csvPanel.add(createModernButton("📥 Import CSV", PRIMARY_COLOR, this::importFromCSV));
-            
-            // Status area
-            statusArea = new JTextArea(2, 50);
-            statusArea.setEditable(false);
-            statusArea.setBackground(SECONDARY_COLOR);
-            statusArea.setForeground(TEXT_SECONDARY);
-            statusArea.setFont(new Font("Arial", Font.PLAIN, 12));
-            statusArea.setBorder(BorderFactory.createTitledBorder("Status"));
-            
-            controlsPanel.add(csvPanel, BorderLayout.WEST);
-            controlsPanel.add(statusArea, BorderLayout.CENTER);
-            
-            return controlsPanel;
-        }
-        
-        private void saveEmployee(ActionEvent e) {
-            try {
-                if (empIdField.getText().trim().isEmpty() || nameField.getText().trim().isEmpty()) {
-                    throw new IllegalArgumentException("Employee ID and Name are required");
-                }
-                
-                Employee employee = new Employee(
-                    dataManager.getNextEmployeeId(),
-                    Integer.parseInt(empIdField.getText().trim()),
-                    nameField.getText().trim(),
-                    positionField.getText().trim(),
-                    departmentField.getText().trim(),
-                    Double.parseDouble(salaryField.getText().trim())
-                );
-                
-                dataManager.addEmployee(employee);
-                refreshEmployeeTable();
-                clearEmployeeForm(null);
-                statusArea.setText("Employee saved successfully: " + employee.getFullName());
-            } catch (Exception ex) {
-                statusArea.setText("Error saving employee: " + ex.getMessage());
-            }
-        }
-        
-        private void updateEmployee(ActionEvent e) {
-            try {
-                int selectedRow = employeeTable.getSelectedRow();
-                if (selectedRow < 0) {
-                    throw new IllegalArgumentException("Please select an employee to update");
-                }
-                
-                int id = Integer.parseInt(idField.getText().trim());
-                Employee employee = new Employee(
-                    id,
-                    Integer.parseInt(empIdField.getText().trim()),
-                    nameField.getText().trim(),
-                    positionField.getText().trim(),
-                    departmentField.getText().trim(),
-                    Double.parseDouble(salaryField.getText().trim())
-                );
-                
-                dataManager.updateEmployee(id, employee);
-                refreshEmployeeTable();
-                clearEmployeeForm(null);
-                statusArea.setText("Employee updated successfully: " + employee.getFullName());
-            } catch (Exception ex) {
-                statusArea.setText("Error updating employee: " + ex.getMessage());
-            }
-        }
-        
-        private void deleteEmployee(ActionEvent e) {
-            try {
-                int selectedRow = employeeTable.getSelectedRow();
-                if (selectedRow < 0) {
-                    throw new IllegalArgumentException("Please select an employee to delete");
-                }
-                
-                int id = Integer.parseInt(idField.getText().trim());
-                Employee employee = dataManager.findEmployeeById(id);
-                
-                int confirm = JOptionPane.showConfirmDialog(
-                    this,
-                    "Are you sure you want to delete employee: " + employee.getFullName() + "?",
-                    "Confirm Delete",
-                    JOptionPane.YES_NO_OPTION,
-                    JOptionPane.WARNING_MESSAGE
-                );
-                
-                if (confirm == JOptionPane.YES_OPTION) {
-                    dataManager.deleteEmployee(id);
-                    refreshEmployeeTable();
-                    clearEmployeeForm(null);
-                    statusArea.setText("Employee deleted successfully");
-                }
-            } catch (Exception ex) {
-                statusArea.setText("Error deleting employee: " + ex.getMessage());
-            }
-        }
-        
-        private void clearEmployeeForm(ActionEvent e) {
-            idField.setText("");
-            empIdField.setText("");
-            nameField.setText("");
-            positionField.setText("");
-            departmentField.setText("");
-            salaryField.setText("");
-            statusArea.setText("Form cleared");
-        }
-        
-        private void loadSelectedEmployee() {
-            int selectedRow = employeeTable.getSelectedRow();
-            if (selectedRow >= 0) {
-                DefaultTableModel model = (DefaultTableModel) employeeTable.getModel();
-                idField.setText(model.getValueAt(selectedRow, 0).toString());
-                empIdField.setText(model.getValueAt(selectedRow, 1).toString());
-                nameField.setText(model.getValueAt(selectedRow, 2).toString());
-                positionField.setText(model.getValueAt(selectedRow, 3).toString());
-                departmentField.setText(model.getValueAt(selectedRow, 4).toString());
-                salaryField.setText(model.getValueAt(selectedRow, 5).toString().replace("₱", "").replace(",", ""));
-            }
-        }
-        
-        private void searchEmployees() {
-            String searchTerm = searchField.getText().toLowerCase().trim();
-            if (searchTerm.isEmpty()) {
+        private void filterEmployeeTable(String searchText) {
+            if (searchText.trim().isEmpty()) {
                 refreshEmployeeTable();
                 return;
             }
             
             tableModel.setRowCount(0);
+            String search = searchText.toLowerCase();
             for (Employee emp : dataManager.getEmployees()) {
-                if (emp.getFullName().toLowerCase().contains(searchTerm) ||
-                    emp.getPosition().toLowerCase().contains(searchTerm) ||
-                    emp.getDepartment().toLowerCase().contains(searchTerm) ||
-                    String.valueOf(emp.getEmployeeID()).contains(searchTerm)) {
+                if (emp.getFullName().toLowerCase().contains(search) ||
+                    emp.getPosition().toLowerCase().contains(search) ||
+                    emp.getDepartment().toLowerCase().contains(search) ||
+                    String.valueOf(emp.getEmployeeID()).contains(search)) {
                     tableModel.addRow(emp.toTableRow());
                 }
             }
         }
-        
+
+        private void saveEmployee(ActionEvent e) {
+            try {
+                int id = Integer.parseInt(idField.getText().trim());
+                String firstName = firstNameField.getText().trim();
+                String lastName = lastNameField.getText().trim();
+                String birthDate = birthDateField.getText().trim();
+                String position = positionField.getText().trim();
+                String department = departmentField.getText().trim();
+                double salary = Double.parseDouble(salaryField.getText().trim());
+
+                if (firstName.isEmpty() || lastName.isEmpty() || position.isEmpty() || department.isEmpty()) {
+                    throw new IllegalArgumentException("Please fill in all required fields");
+                }
+
+                // Check if employee ID already exists
+                Employee existingEmp = dataManager.findEmployeeById(id);
+                if (existingEmp != null) {
+                    int choice = JOptionPane.showConfirmDialog(this,
+                        "Employee ID " + id + " already exists. Do you want to update this employee?",
+                        "Employee Exists",
+                        JOptionPane.YES_NO_OPTION);
+                    
+                    if (choice == JOptionPane.YES_OPTION) {
+                        // Update existing employee
+                        dataManager.getEmployees().remove(existingEmp);
+                    } else {
+                        resultArea.setText("Operation cancelled. Employee ID " + id + " already exists.");
+                        return;
+                    }
+                }
+
+                Employee emp = new Employee(id, firstName, lastName, birthDate, position, department);
+                emp.setSalary(salary);
+                emp.setContactNumber(contactField.getText().trim());
+                emp.setAddress(addressField.getText().trim());
+
+                dataManager.addEmployee(emp);
+                refreshEmployeeTable();
+                clearForm();
+                resultArea.setText("SUCCESS: Employee " + emp.getFullName() + " has been saved with ID " + id);
+            } catch (NumberFormatException ex) {
+                resultArea.setText("ERROR: Please enter valid numbers for Employee ID and Salary");
+            } catch (Exception ex) {
+                resultArea.setText("ERROR: " + ex.getMessage());
+            }
+        }
+
+        private void deleteEmployee(ActionEvent e) {
+            int selectedRow = employeeTable.getSelectedRow();
+            if (selectedRow >= 0) {
+                int confirm = JOptionPane.showConfirmDialog(this,
+                    "Are you sure you want to delete this employee?",
+                    "Confirm Delete",
+                    JOptionPane.YES_NO_OPTION);
+                
+                if (confirm == JOptionPane.YES_OPTION) {
+                    dataManager.getEmployees().remove(selectedRow);
+                    refreshEmployeeTable();
+                    clearForm();
+                    resultArea.setText("✅ Employee deleted successfully");
+                }
+            } else {
+                resultArea.setText("❌ Please select an employee to delete");
+            }
+        }
+
+        private void clearForm() {
+            idField.setText("");
+            firstNameField.setText("");
+            lastNameField.setText("");
+            birthDateField.setText("1990-01-01");
+            positionField.setText("");
+            departmentField.setText("");
+            salaryField.setText("25000.00");
+            contactField.setText("");
+            addressField.setText("");
+        }
+
+        private void loadSelectedEmployee() {
+            int selectedRow = employeeTable.getSelectedRow();
+            if (selectedRow >= 0) {
+                Employee emp = dataManager.getEmployees().get(selectedRow);
+                idField.setText(String.valueOf(emp.getEmployeeID()));
+                firstNameField.setText(emp.getFirstName());
+                lastNameField.setText(emp.getLastName());
+                birthDateField.setText(emp.getBirthDate());
+                positionField.setText(emp.getPosition());
+                departmentField.setText(emp.getDepartment());
+                salaryField.setText(String.valueOf(emp.getSalary()));
+                contactField.setText(emp.contactNumber != null ? emp.contactNumber : "");
+                addressField.setText(emp.address != null ? emp.address : "");
+            }
+        }
+
         private void refreshEmployeeTable() {
             tableModel.setRowCount(0);
             for (Employee emp : dataManager.getEmployees()) {
                 tableModel.addRow(emp.toTableRow());
             }
         }
-        
-        private void exportToCSV(ActionEvent e) {
-            try {
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setDialogTitle("Export Employees to CSV");
-                fileChooser.setSelectedFile(new File("employees.csv"));
-                
-                if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-                    File file = fileChooser.getSelectedFile();
-                    try (PrintWriter writer = new PrintWriter(new FileWriter(file))) {
-                        // Write header
-                        writer.println("ID,EmployeeID,Name,Position,Department,Salary");
-                        
-                        // Write data
-                        for (Employee emp : dataManager.getEmployees()) {
-                            writer.printf("%d,%d,\"%s\",\"%s\",\"%s\",%.2f%n",
-                                emp.getId(), emp.getEmployeeID(), emp.getFullName(),
-                                emp.getPosition(), emp.getDepartment(), emp.getSalary());
-                        }
-                    }
-                    statusArea.setText("Employees exported to CSV successfully: " + file.getName());
-                }
-            } catch (Exception ex) {
-                statusArea.setText("Error exporting to CSV: " + ex.getMessage());
-            }
-        }
-        
-        private void importFromCSV(ActionEvent e) {
-            try {
-                JFileChooser fileChooser = new JFileChooser();
-                fileChooser.setDialogTitle("Import Employees from CSV");
-                
-                if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-                    File file = fileChooser.getSelectedFile();
-                    int importCount = 0;
-                    
-                    try (Scanner scanner = new Scanner(file)) {
-                        // Skip header
-                        if (scanner.hasNextLine()) {
-                            scanner.nextLine();
-                        }
-                        
-                        while (scanner.hasNextLine()) {
-                            String line = scanner.nextLine();
-                            String[] parts = line.split(",");
-                            
-                            if (parts.length >= 6) {
-                                Employee employee = new Employee(
-                                    dataManager.getNextEmployeeId(),
-                                    Integer.parseInt(parts[1]),
-                                    parts[2].replace("\"", ""),
-                                    parts[3].replace("\"", ""),
-                                    parts[4].replace("\"", ""),
-                                    Double.parseDouble(parts[5])
-                                );
-                                dataManager.addEmployee(employee);
-                                importCount++;
-                            }
-                        }
-                    }
-                    
-                    refreshEmployeeTable();
-                    statusArea.setText("Imported " + importCount + " employees from CSV successfully");
-                }
-            } catch (Exception ex) {
-                statusArea.setText("Error importing from CSV: " + ex.getMessage());
-            }
-        }
     }
-    
-    // Data Models
-    class Employee {
-        int id, employeeID;
-        String fullName, position, department;
-        double salary;
-        
-        public Employee(int id, int employeeID, String fullName, String position, String department, double salary) {
-            this.id = id;
-            this.employeeID = employeeID;
-            this.fullName = fullName;
-            this.position = position;
-            this.department = department;
-            this.salary = salary;
-        }
-        
-        public int getId() { return id; }
-        public int getEmployeeID() { return employeeID; }
-        public String getFullName() { return fullName; }
-        public String getPosition() { return position; }
-        public String getDepartment() { return department; }
-        public double getSalary() { return salary; }
-        
-        public Object[] toTableRow() {
-            return new Object[]{id, employeeID, fullName, position, department, String.format("₱%.2f", salary)};
-        }
-    }
-    
-    class Department extends JPanel {
-        // Department panel implementation would go here
-        public Department() {
-            setBackground(SECONDARY_COLOR);
-            setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-            JLabel label = new JLabel("Department Management - Coming Soon");
-            label.setFont(new Font("Arial", Font.BOLD, 18));
-            label.setForeground(TEXT_PRIMARY);
-            add(label);
-        }
-    }
-    
+
     class DepartmentPanel extends JPanel {
+        private JComboBox<String> departmentCombo;
+        private JTextField managerField, budgetField;
+        private JTable departmentTable;
+        private DefaultTableModel tableModel;
+        private JTextArea resultArea;
+
         public DepartmentPanel() {
-            setBackground(SECONDARY_COLOR);
-            setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-            JLabel label = new JLabel("Department Management - Available in Full Version");
-            label.setFont(new Font("Arial", Font.BOLD, 18));
-            label.setForeground(TEXT_PRIMARY);
-            add(label);
+            setLayout(new BorderLayout(10, 10));
+            setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            
+            JPanel formPanel = createDepartmentForm();
+            JPanel tablePanel = createDepartmentTable();
+            
+            resultArea = new JTextArea(3, 40);
+            resultArea.setEditable(false);
+            resultArea.setBackground(new Color(245, 245, 245));
+            resultArea.setBorder(BorderFactory.createTitledBorder("Status"));
+            JScrollPane resultScroll = new JScrollPane(resultArea);
+            
+            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, formPanel, tablePanel);
+            splitPane.setDividerLocation(400);
+            
+            add(splitPane, BorderLayout.CENTER);
+            add(resultScroll, BorderLayout.SOUTH);
+            
+            refreshDepartmentTable();
         }
-    }
-    
-    class AttendancePanel extends JPanel {
-        public AttendancePanel() {
-            setBackground(SECONDARY_COLOR);
-            setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-            JLabel label = new JLabel("Attendance Management - Available in Full Version");
-            label.setFont(new Font("Arial", Font.BOLD, 18));
-            label.setForeground(TEXT_PRIMARY);
-            add(label);
+
+        private JPanel createDepartmentForm() {
+            JPanel panel = new JPanel(new GridBagLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Department Management"));
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(5, 5, 5, 5);
+
+            String[] departments = {"IT", "HR", "Finance", "Marketing", "Operations", "Admin", "Sales"};
+            departmentCombo = new JComboBox<>(departments);
+            managerField = new JTextField(20);
+            budgetField = new JTextField("500000.00", 20);
+
+            gbc.gridx = 0; gbc.gridy = 0; panel.add(new JLabel("Department:"), gbc);
+            gbc.gridx = 1; panel.add(departmentCombo, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 1; panel.add(new JLabel("Manager Name:"), gbc);
+            gbc.gridx = 1; panel.add(managerField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 2; panel.add(new JLabel("Budget ($):"), gbc);
+            gbc.gridx = 1; panel.add(budgetField, gbc);
+
+            JPanel buttonPanel = new JPanel(new FlowLayout());
+            JButton saveButton = new JButton("💾 Save Department");
+            JButton showInfoButton = new JButton("📊 Show Info");
+            
+            saveButton.addActionListener(this::saveDepartment);
+            showInfoButton.addActionListener(this::showDepartmentInfo);
+            
+            buttonPanel.add(saveButton);
+            buttonPanel.add(showInfoButton);
+            
+            gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2;
+            panel.add(buttonPanel, gbc);
+
+            return panel;
         }
-    }
-    
-    class PayslipPanel extends JPanel {
-        public PayslipPanel() {
-            setBackground(SECONDARY_COLOR);
-            setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-            JLabel label = new JLabel("Payslip Management - Available in Full Version");
-            label.setFont(new Font("Arial", Font.BOLD, 18));
-            label.setForeground(TEXT_PRIMARY);
-            add(label);
-        }
-    }
-    
-    class LeaveRequestPanel extends JPanel {
-        public LeaveRequestPanel() {
-            setBackground(SECONDARY_COLOR);
-            setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-            JLabel label = new JLabel("Leave Request Management - Available in Full Version");
-            label.setFont(new Font("Arial", Font.BOLD, 18));
-            label.setForeground(TEXT_PRIMARY);
-            add(label);
-        }
-    }
-    
-    // Data Manager
-    class DataManager {
-        private List<Employee> employees = new ArrayList<>();
-        private int nextEmployeeId = 1;
-        
-        public DataManager() {
-            // Initialize with sample data
-            initializeSampleData();
-        }
-        
-        private void initializeSampleData() {
-            // Sample Employees
-            employees.add(new Employee(nextEmployeeId++, 1001, "Juan Dela Cruz", "Software Developer", "Information Technology", 50000.00));
-            employees.add(new Employee(nextEmployeeId++, 1002, "Maria Santos", "HR Manager", "Human Resources", 60000.00));
-            employees.add(new Employee(nextEmployeeId++, 1003, "Pedro Garcia", "Accountant", "Finance", 45000.00));
-            employees.add(new Employee(nextEmployeeId++, 1004, "Ana Rodriguez", "Operations Supervisor", "Operations", 55000.00));
-            employees.add(new Employee(nextEmployeeId++, 1005, "Luis Martinez", "System Administrator", "Information Technology", 52000.00));
-        }
-        
-        // Employee methods
-        public List<Employee> getEmployees() { return employees; }
-        public int getNextEmployeeId() { return nextEmployeeId++; }
-        public void addEmployee(Employee employee) { employees.add(employee); }
-        public void updateEmployee(int id, Employee employee) {
-            for (int i = 0; i < employees.size(); i++) {
-                if (employees.get(i).getId() == id) {
-                    employees.set(i, employee);
-                    break;
+
+        private JPanel createDepartmentTable() {
+            JPanel panel = new JPanel(new BorderLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Department Records"));
+            
+            String[] columns = {"Department", "Manager", "Employees", "Budget"};
+            tableModel = new DefaultTableModel(columns, 0) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
                 }
+            };
+            
+            departmentTable = new JTable(tableModel);
+            JScrollPane scrollPane = new JScrollPane(departmentTable);
+            panel.add(scrollPane, BorderLayout.CENTER);
+            
+            return panel;
+        }
+
+        private void saveDepartment(ActionEvent e) {
+            try {
+                String deptName = (String) departmentCombo.getSelectedItem();
+                String manager = managerField.getText().trim();
+                double budget = Double.parseDouble(budgetField.getText().trim());
+
+                if (manager.isEmpty()) {
+                    throw new IllegalArgumentException("Manager name is required");
+                }
+
+                Department dept = new Department(deptName, manager);
+                dept.setBudget(budget);
+                
+                // Count employees in this department
+                long empCount = dataManager.getEmployees().stream()
+                    .filter(emp -> emp.getDepartment().equals(deptName))
+                    .count();
+                dept.setEmployeeCount((int) empCount);
+
+                dataManager.addDepartment(dept);
+                refreshDepartmentTable();
+                resultArea.setText("✅ Department saved successfully: " + deptName);
+            } catch (Exception ex) {
+                resultArea.setText("❌ Error saving department: " + ex.getMessage());
             }
         }
-        public void deleteEmployee(int id) {
-            employees.removeIf(emp -> emp.getId() == id);
+
+        private void showDepartmentInfo(ActionEvent e) {
+            String deptName = (String) departmentCombo.getSelectedItem();
+            String manager = managerField.getText().trim();
+            
+            if (!manager.isEmpty()) {
+                Department dept = new Department(deptName, manager);
+                long empCount = dataManager.getEmployees().stream()
+                    .filter(emp -> emp.getDepartment().equals(deptName))
+                    .count();
+                dept.setEmployeeCount((int) empCount);
+                
+                resultArea.setText("📊 " + dept.getDepartmentInfo());
+            } else {
+                resultArea.setText("❌ Please enter manager name first");
+            }
         }
-        public Employee findEmployeeById(int id) {
-            return employees.stream().filter(emp -> emp.getId() == id).findFirst().orElse(null);
-        }
-        public Employee findEmployeeByEmployeeId(int employeeId) {
-            return employees.stream().filter(emp -> emp.getEmployeeID() == employeeId).findFirst().orElse(null);
+
+        private void refreshDepartmentTable() {
+            tableModel.setRowCount(0);
+            for (Department dept : dataManager.getDepartments()) {
+                tableModel.addRow(dept.toTableRow());
+            }
         }
     }
-    
+
+    class AttendancePanel extends JPanel {
+        private JTextField empIdField, timeInField, timeOutField, dateField;
+        private JTable attendanceTable;
+        private DefaultTableModel tableModel;
+        private JTextArea resultArea;
+
+        public AttendancePanel() {
+            setLayout(new BorderLayout(10, 10));
+            setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            
+            JPanel formPanel = createAttendanceForm();
+            JPanel tablePanel = createAttendanceTable();
+            
+            resultArea = new JTextArea(3, 40);
+            resultArea.setEditable(false);
+            resultArea.setBackground(new Color(245, 245, 245));
+            resultArea.setBorder(BorderFactory.createTitledBorder("Status"));
+            JScrollPane resultScroll = new JScrollPane(resultArea);
+            
+            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, formPanel, tablePanel);
+            splitPane.setDividerLocation(400);
+            
+            add(splitPane, BorderLayout.CENTER);
+            add(resultScroll, BorderLayout.SOUTH);
+            
+            refreshAttendanceTable();
+        }
+
+        private JPanel createAttendanceForm() {
+            JPanel panel = new JPanel(new GridBagLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Attendance Logging"));
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(5, 5, 5, 5);
+
+            empIdField = new JTextField(15);
+            dateField = new JTextField(LocalDate.now().toString(), 15);
+            timeInField = new JTextField("09:00", 15);
+            timeOutField = new JTextField("17:00", 15);
+
+            gbc.gridx = 0; gbc.gridy = 0; panel.add(new JLabel("Employee ID:"), gbc);
+            gbc.gridx = 1; panel.add(empIdField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 1; panel.add(new JLabel("Date:"), gbc);
+            gbc.gridx = 1; panel.add(dateField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 2; panel.add(new JLabel("Time In:"), gbc);
+            gbc.gridx = 1; panel.add(timeInField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 3; panel.add(new JLabel("Time Out:"), gbc);
+            gbc.gridx = 1; panel.add(timeOutField, gbc);
+
+            JPanel buttonPanel = new JPanel(new FlowLayout());
+            JButton logButton = new JButton("⏰ Log Attendance");
+            JButton quickTimeInButton = new JButton("🕘 Quick Time In");
+            JButton quickTimeOutButton = new JButton("🕔 Quick Time Out");
+            
+            logButton.addActionListener(this::logAttendance);
+            quickTimeInButton.addActionListener(e -> {
+                timeInField.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+            });
+            quickTimeOutButton.addActionListener(e -> {
+                timeOutField.setText(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+            });
+            
+            buttonPanel.add(logButton);
+            buttonPanel.add(quickTimeInButton);
+            buttonPanel.add(quickTimeOutButton);
+            
+            gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 2;
+            panel.add(buttonPanel, gbc);
+
+            return panel;
+        }
+
+        private JPanel createAttendanceTable() {
+            JPanel panel = new JPanel(new BorderLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Attendance Records"));
+            
+            String[] columns = {"Date", "Employee", "Time In", "Time Out", "Hours", "Status"};
+            tableModel = new DefaultTableModel(columns, 0) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
+            
+            attendanceTable = new JTable(tableModel);
+            JScrollPane scrollPane = new JScrollPane(attendanceTable);
+            panel.add(scrollPane, BorderLayout.CENTER);
+            
+            return panel;
+        }
+
+        private void logAttendance(ActionEvent e) {
+            try {
+                int id = Integer.parseInt(empIdField.getText().trim());
+                Employee emp = dataManager.findEmployeeById(id);
+                
+                if (emp == null) {
+                    throw new IllegalArgumentException("Employee not found with ID: " + id);
+                }
+
+                AttendanceRecord attendance = new AttendanceRecord(
+                    dateField.getText().trim(),
+                    timeInField.getText().trim(),
+                    timeOutField.getText().trim(),
+                    emp
+                );
+
+                dataManager.addAttendanceRecord(attendance);
+                refreshAttendanceTable();
+                
+                resultArea.setText(String.format("✅ Attendance logged for %s - Hours: %.2f %s",
+                    emp.getFullName(), attendance.calculateHoursWorked(),
+                    attendance.isLate() ? "(LATE)" : ""));
+            } catch (Exception ex) {
+                resultArea.setText("❌ Error logging attendance: " + ex.getMessage());
+            }
+        }
+
+        private void refreshAttendanceTable() {
+            tableModel.setRowCount(0);
+            for (AttendanceRecord record : dataManager.getAttendanceRecords()) {
+                tableModel.addRow(record.toTableRow());
+            }
+        }
+    }
+
+    class PayslipPanel extends JPanel {
+        private JTextField empIdField, periodField;
+        private JTable payslipTable;
+        private DefaultTableModel tableModel;
+        private JTextArea payslipPreview;
+
+        public PayslipPanel() {
+            setLayout(new BorderLayout(10, 10));
+            setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            
+            JPanel topPanel = new JPanel(new BorderLayout());
+            topPanel.add(createPayslipForm(), BorderLayout.WEST);
+            topPanel.add(createPayslipPreview(), BorderLayout.CENTER);
+            
+            JPanel tablePanel = createPayslipTable();
+            
+            JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, topPanel, tablePanel);
+            splitPane.setDividerLocation(300);
+            
+            add(splitPane, BorderLayout.CENTER);
+            
+            refreshPayslipTable();
+        }
+
+        private JPanel createPayslipForm() {
+            JPanel panel = new JPanel(new GridBagLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Generate Payslip"));
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(5, 5, 5, 5);
+
+            empIdField = new JTextField(15);
+            periodField = new JTextField(LocalDate.now().getMonth() + " " + LocalDate.now().getYear(), 15);
+
+            gbc.gridx = 0; gbc.gridy = 0; panel.add(new JLabel("Employee ID:"), gbc);
+            gbc.gridx = 1; panel.add(empIdField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 1; panel.add(new JLabel("Pay Period:"), gbc);
+            gbc.gridx = 1; panel.add(periodField, gbc);
+
+            JPanel buttonPanel = new JPanel(new FlowLayout());
+            JButton generateButton = new JButton("💰 Generate Payslip");
+            JButton previewButton = new JButton("👁️ Preview");
+            
+            generateButton.addActionListener(this::generatePayslip);
+            previewButton.addActionListener(this::previewPayslip);
+            
+            buttonPanel.add(generateButton);
+            buttonPanel.add(previewButton);
+            
+            gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 2;
+            panel.add(buttonPanel, gbc);
+
+            return panel;
+        }
+
+        private JPanel createPayslipPreview() {
+            JPanel panel = new JPanel(new BorderLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Payslip Preview"));
+            
+            payslipPreview = new JTextArea(12, 30);
+            payslipPreview.setEditable(false);
+            payslipPreview.setFont(new Font("Monospaced", Font.PLAIN, 12));
+            payslipPreview.setBackground(new Color(250, 250, 250));
+            
+            JScrollPane scrollPane = new JScrollPane(payslipPreview);
+            panel.add(scrollPane, BorderLayout.CENTER);
+            
+            return panel;
+        }
+
+        private JPanel createPayslipTable() {
+            JPanel panel = new JPanel(new BorderLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Generated Payslips"));
+            
+            String[] columns = {"Payslip ID", "Employee", "Period", "Basic Salary", "Net Pay"};
+            tableModel = new DefaultTableModel(columns, 0) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
+            
+            payslipTable = new JTable(tableModel);
+            JScrollPane scrollPane = new JScrollPane(payslipTable);
+            panel.add(scrollPane, BorderLayout.CENTER);
+            
+            return panel;
+        }
+
+        private void generatePayslip(ActionEvent e) {
+            try {
+                int empId = Integer.parseInt(empIdField.getText().trim());
+                Employee emp = dataManager.findEmployeeById(empId);
+                
+                if (emp == null) {
+                    throw new IllegalArgumentException("Employee not found with ID: " + empId);
+                }
+
+                int payslipId = dataManager.getPaySlips().size() + 1;
+                PaySlip payslip = new PaySlip(payslipId, emp, periodField.getText().trim());
+                
+                dataManager.addPaySlip(payslip);
+                refreshPayslipTable();
+                
+                payslipPreview.setText(payslip.getDetailedPaySlip());
+                
+                JOptionPane.showMessageDialog(this,
+                    "✅ Payslip generated successfully for " + emp.getFullName(),
+                    "Success",
+                    JOptionPane.INFORMATION_MESSAGE);
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this,
+                    "❌ Error generating payslip: " + ex.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        }
+
+        private void previewPayslip(ActionEvent e) {
+            try {
+                int empId = Integer.parseInt(empIdField.getText().trim());
+                Employee emp = dataManager.findEmployeeById(empId);
+                
+                if (emp == null) {
+                    throw new IllegalArgumentException("Employee not found with ID: " + empId);
+                }
+
+                PaySlip payslip = new PaySlip(0, emp, periodField.getText().trim());
+                payslipPreview.setText(payslip.getDetailedPaySlip());
+            } catch (Exception ex) {
+                payslipPreview.setText("❌ Error creating preview: " + ex.getMessage());
+            }
+        }
+
+        private void refreshPayslipTable() {
+            tableModel.setRowCount(0);
+            for (PaySlip payslip : dataManager.getPaySlips()) {
+                tableModel.addRow(payslip.toTableRow());
+            }
+        }
+    }
+
+    class LeaveRequestPanel extends JPanel {
+        private JTextField empIdField, requestIdField, startDateField, endDateField;
+        private JComboBox<String> leaveTypeCombo;
+        private JTextArea reasonArea;
+        private JTable leaveTable;
+        private DefaultTableModel tableModel;
+        private JTextArea resultArea;
+
+        public LeaveRequestPanel() {
+            setLayout(new BorderLayout(10, 10));
+            setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+            
+            JPanel formPanel = createLeaveRequestForm();
+            JPanel tablePanel = createLeaveRequestTable();
+            
+            resultArea = new JTextArea(3, 40);
+            resultArea.setEditable(false);
+            resultArea.setBackground(new Color(245, 245, 245));
+            resultArea.setBorder(BorderFactory.createTitledBorder("Status"));
+            JScrollPane resultScroll = new JScrollPane(resultArea);
+            
+            JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, formPanel, tablePanel);
+            splitPane.setDividerLocation(450);
+            
+            add(splitPane, BorderLayout.CENTER);
+            add(resultScroll, BorderLayout.SOUTH);
+            
+            refreshLeaveRequestTable();
+        }
+
+        private JPanel createLeaveRequestForm() {
+            JPanel panel = new JPanel(new GridBagLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Leave Request Management"));
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(5, 5, 5, 5);
+
+            requestIdField = new JTextField(15);
+            empIdField = new JTextField(15);
+            String[] leaveTypes = {"Annual", "Sick", "Personal", "Emergency", "Maternity", "Paternity"};
+            leaveTypeCombo = new JComboBox<>(leaveTypes);
+            startDateField = new JTextField(LocalDate.now().toString(), 15);
+            endDateField = new JTextField(LocalDate.now().plusDays(3).toString(), 15);
+            reasonArea = new JTextArea(3, 15);
+            reasonArea.setBorder(BorderFactory.createLoweredBevelBorder());
+
+            gbc.gridx = 0; gbc.gridy = 0; panel.add(new JLabel("Request ID:"), gbc);
+            gbc.gridx = 1; panel.add(requestIdField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 1; panel.add(new JLabel("Employee ID:"), gbc);
+            gbc.gridx = 1; panel.add(empIdField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 2; panel.add(new JLabel("Leave Type:"), gbc);
+            gbc.gridx = 1; panel.add(leaveTypeCombo, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 3; panel.add(new JLabel("Start Date:"), gbc);
+            gbc.gridx = 1; panel.add(startDateField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 4; panel.add(new JLabel("End Date:"), gbc);
+            gbc.gridx = 1; panel.add(endDateField, gbc);
+            
+            gbc.gridx = 0; gbc.gridy = 5; panel.add(new JLabel("Reason:"), gbc);
+            gbc.gridx = 1; panel.add(new JScrollPane(reasonArea), gbc);
+
+            JPanel buttonPanel = new JPanel(new GridLayout(2, 2, 5, 5));
+            JButton requestButton = new JButton("📋 Submit Request");
+            JButton approveButton = new JButton("✅ Approve");
+            JButton rejectButton = new JButton("❌ Reject");
+            JButton clearButton = new JButton("🗑️ Clear");
+            
+            requestButton.addActionListener(this::submitLeaveRequest);
+            approveButton.addActionListener(e -> updateLeaveStatus("Approved"));
+            rejectButton.addActionListener(e -> updateLeaveStatus("Rejected"));
+            clearButton.addActionListener(e -> clearForm());
+            
+            buttonPanel.add(requestButton);
+            buttonPanel.add(approveButton);
+            buttonPanel.add(rejectButton);
+            buttonPanel.add(clearButton);
+            
+            gbc.gridx = 0; gbc.gridy = 6; gbc.gridwidth = 2;
+            panel.add(buttonPanel, gbc);
+
+            return panel;
+        }
+
+        private JPanel createLeaveRequestTable() {
+            JPanel panel = new JPanel(new BorderLayout());
+            panel.setBorder(BorderFactory.createTitledBorder("Leave Request Records"));
+            
+            String[] columns = {"Request ID", "Employee", "Type", "Start Date", "End Date", "Duration", "Status"};
+            tableModel = new DefaultTableModel(columns, 0) {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false;
+                }
+            };
+            
+            leaveTable = new JTable(tableModel);
+            leaveTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            leaveTable.getSelectionModel().addListSelectionListener(e -> {
+                if (!e.getValueIsAdjusting()) {
+                    loadSelectedLeaveRequest();
+                }
+            });
+            
+            JScrollPane scrollPane = new JScrollPane(leaveTable);
+            panel.add(scrollPane, BorderLayout.CENTER);
+            
+            return panel;
+        }
+
+        private void submitLeaveRequest(ActionEvent e) {
+            try {
+                int requestId = Integer.parseInt(requestIdField.getText().trim());
+                int empId = Integer.parseInt(empIdField.getText().trim());
+                Employee emp = dataManager.findEmployeeById(empId);
+                
+                if (emp == null) {
+                    throw new IllegalArgumentException("Employee not found with ID: " + empId);
+                }
+
+                String leaveType = (String) leaveTypeCombo.getSelectedItem();
+                String startDate = startDateField.getText().trim();
+                String endDate = endDateField.getText().trim();
+                String reason = reasonArea.getText().trim();
+
+                LeaveRequest request = new LeaveRequest(requestId, emp, leaveType, startDate, endDate, reason);
+                dataManager.addLeaveRequest(request);
+                refreshLeaveRequestTable();
+                clearForm();
+                
+                resultArea.setText(String.format("✅ Leave request submitted for %s - %d days",
+                    emp.getFullName(), request.calculateLeaveDays()));
+            } catch (Exception ex) {
+                resultArea.setText("❌ Error submitting leave request: " + ex.getMessage());
+            }
+        }
+
+        private void updateLeaveStatus(String status) {
+            int selectedRow = leaveTable.getSelectedRow();
+            if (selectedRow >= 0) {
+                LeaveRequest request = dataManager.getLeaveRequests().get(selectedRow);
+                if (status.equals("Approved")) {
+                    request.approveLeave();
+                } else {
+                    request.rejectLeave();
+                }
+                refreshLeaveRequestTable();
+                resultArea.setText("✅ Leave request " + status.toLowerCase() + " for " + 
+                    request.employee.getFullName());
+            } else {
+                resultArea.setText("❌ Please select a leave request to update");
+            }
+        }
+
+        private void loadSelectedLeaveRequest() {
+            int selectedRow = leaveTable.getSelectedRow();
+            if (selectedRow >= 0) {
+                LeaveRequest request = dataManager.getLeaveRequests().get(selectedRow);
+                requestIdField.setText(String.valueOf(request.requestID));
+                empIdField.setText(String.valueOf(request.employee.getEmployeeID()));
+                leaveTypeCombo.setSelectedItem(request.leaveType);
+                startDateField.setText(request.startDate);
+                endDateField.setText(request.endDate);
+                reasonArea.setText(request.reason != null ? request.reason : "");
+            }
+        }
+
+        private void clearForm() {
+            requestIdField.setText("");
+            empIdField.setText("");
+            leaveTypeCombo.setSelectedIndex(0);
+            startDateField.setText(LocalDate.now().toString());
+            endDateField.setText(LocalDate.now().plusDays(3).toString());
+            reasonArea.setText("");
+        }
+
+        private void refreshLeaveRequestTable() {
+            tableModel.setRowCount(0);
+            for (LeaveRequest request : dataManager.getLeaveRequests()) {
+                tableModel.addRow(request.toTableRow());
+            }
+        }
+    }
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                // Set system look and feel for modern appearance
-                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeel());
+                for (UIManager.LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+                    if ("Nimbus".equals(info.getName())) {
+                        UIManager.setLookAndFeel(info.getClassName());
+                        break;
+                    }
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            new Project();
+            new Project().setVisible(true);
         });
     }
 }
