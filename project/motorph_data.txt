@@ -1,0 +1,12 @@
+=== MotorPH Employee Data Export ===
+Export Date: 2025-06-27T21:12:35.391765300
+
+--- EMPLOYEES ---
+ID: 1001 | Name: Alice Williams | Birth: 1990-05-15 | Position: Software Developer | Department: IT | Salary: $25000.00
+ID: 1002 | Name: Bob Davis | Birth: 1988-08-22 | Position: HR Manager | Department: HR | Salary: $25000.00
+ID: 1003 | Name: Carol Miller | Birth: 1992-12-10 | Position: Accountant | Department: Finance | Salary: $25000.00
+
+--- DEPARTMENTS ---
+Department: IT | Manager: John Smith | Employees: 0 | Budget: $500000.00
+Department: HR | Manager: Sarah Johnson | Employees: 0 | Budget: $500000.00
+Department: Finance | Manager: Michael Brown | Employees: 0 | Budget: $500000.00
